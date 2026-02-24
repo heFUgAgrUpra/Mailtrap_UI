@@ -42,6 +42,8 @@ const elements = {
   detailBody: document.getElementById('detail-body'),
   bodyIframe: document.getElementById('body-iframe'),
   bodyText: document.getElementById('body-text'),
+  copyBodyBtn: document.getElementById('copy-body-btn'),
+  contextMenu: document.getElementById('context-menu'),
   tabs: document.querySelectorAll('.tab')
 };
 
@@ -146,6 +148,119 @@ function openUrlInBrowser(url) {
   }
 }
 
+function getActiveTab() {
+  const active = document.querySelector('.tab.active');
+  return active ? active.dataset.tab : 'html';
+}
+
+function getSelectedText() {
+  const active = document.activeElement;
+  if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+    const start = active.selectionStart;
+    const end = active.selectionEnd;
+    if (start != null && end != null && end > start) {
+      return active.value.substring(start, end).trim();
+    }
+    return '';
+  }
+  const tab = getActiveTab();
+  if (tab === 'html' && elements.bodyIframe && elements.bodyIframe.contentDocument) {
+    const iframeSel = elements.bodyIframe.contentDocument.getSelection();
+    if (iframeSel && !iframeSel.isCollapsed && iframeSel.toString().trim()) {
+      return iframeSel.toString().trim();
+    }
+  }
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return '';
+  return sel.toString().trim();
+}
+
+function copySelectionOrBody() {
+  const selected = getSelectedText();
+  const text = selected || (function() {
+    if (contextMenuFromSearchBox && elements.searchInput) {
+      return elements.searchInput.value || '';
+    }
+    const tab = getActiveTab();
+    if (tab === 'html' && elements.bodyIframe.contentDocument && elements.bodyIframe.contentDocument.body) {
+      return elements.bodyIframe.contentDocument.body.innerText || '';
+    }
+    return elements.bodyText.innerText || '';
+  })();
+  if (!text.trim()) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      const btn = elements.copyBodyBtn;
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      }
+    }).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function copyBodyToClipboard() {
+  copySelectionOrBody();
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand('copy');
+    const btn = elements.copyBodyBtn;
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 1500); }
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
+let contextMenuLinkHref = null;
+let contextMenuFromSearchBox = false;
+
+function showContextMenu(x, y, linkHref, fromSearchBox) {
+  contextMenuLinkHref = linkHref || null;
+  contextMenuFromSearchBox = !!fromSearchBox;
+  const menu = elements.contextMenu;
+  if (!menu) return;
+  const openBtn = menu.querySelector('[data-action="open-link"]');
+  if (openBtn) {
+    openBtn.classList.toggle('hidden', !contextMenuLinkHref);
+  }
+  menu.classList.remove('hidden');
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  const rect = menu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) menu.style.left = (x - rect.width) + 'px';
+  if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+}
+
+function hideContextMenu() {
+  const menu = elements.contextMenu;
+  if (menu) menu.classList.add('hidden');
+  contextMenuLinkHref = null;
+  contextMenuFromSearchBox = false;
+}
+
+function handleContextMenuAction(action) {
+  if (action === 'copy') copySelectionOrBody();
+  else if (action === 'paste') {
+    try {
+      document.execCommand('paste');
+    } catch (_) {}
+  } else if (action === 'open-link' && contextMenuLinkHref) {
+    openUrlInBrowser(contextMenuLinkHref);
+  }
+  hideContextMenu();
+}
+
 function makeLinksOpenInBrowser(iframe) {
   if (!iframe || !iframe.contentDocument) return;
   const doc = iframe.contentDocument;
@@ -155,6 +270,15 @@ function makeLinksOpenInBrowser(iframe) {
       const href = a.getAttribute('href');
       if (href) openUrlInBrowser(href);
     });
+  });
+  doc.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const rect = iframe.getBoundingClientRect();
+    const x = rect.left + e.clientX;
+    const y = rect.top + e.clientY;
+    const link = e.target.closest ? e.target.closest('a[href^="http"]') : null;
+    const linkHref = link ? link.getAttribute('href') : null;
+    showContextMenu(x, y, linkHref);
   });
 }
 
@@ -381,6 +505,46 @@ function init() {
       openUrlInBrowser(link.getAttribute('href'));
     }
   });
+
+  if (elements.copyBodyBtn) {
+    elements.copyBodyBtn.addEventListener('click', copyBodyToClipboard);
+  }
+
+  elements.detailContent.addEventListener('contextmenu', (e) => {
+    if (!elements.detailContent.classList.contains('hidden')) {
+      e.preventDefault();
+      const link = e.target.closest('a.body-link');
+      showContextMenu(e.clientX, e.clientY, link ? link.getAttribute('href') : null);
+    }
+  });
+
+  if (elements.searchInput) {
+    elements.searchInput.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, null, true);
+    });
+  }
+
+  const listHeader = document.querySelector('.list-header');
+  if (listHeader) {
+    listHeader.addEventListener('contextmenu', (e) => {
+      if (e.target === elements.searchInput) return;
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, null);
+    });
+  }
+
+  if (elements.contextMenu) {
+    elements.contextMenu.querySelectorAll('button[data-action]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleContextMenuAction(btn.dataset.action);
+      });
+    });
+  }
+
+  document.addEventListener('click', hideContextMenu);
+  document.addEventListener('scroll', hideContextMenu, true);
 
   elements.tabs.forEach((tab) => {
     tab.addEventListener('click', () => switchBodyTab(tab.dataset.tab));

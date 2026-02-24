@@ -66,5 +66,4 @@ Add to `package.json`:
 ```
 
 Then run `npm run dist` to create installers in the `dist` folder.
-# Mailtrap
-# Mailtrap
+# Mailtrap_UI

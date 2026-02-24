@@ -327,6 +327,10 @@ async function loadMessages() {
     renderMessageList();
     if (selectedId && !messages.some((m) => m.id === selectedId)) {
       selectedId = null;
+    }
+    if (messages.length > 0 && !messages.some((m) => m.id === selectedId)) {
+      selectMessage(messages[0].id);
+    } else if (messages.length === 0) {
       elements.detailContent.classList.add('hidden');
       elements.detailEmpty.classList.remove('hidden');
     }

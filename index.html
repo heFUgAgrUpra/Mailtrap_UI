@@ -62,10 +62,16 @@
     <main class="main">
       <aside class="message-list-panel">
         <div class="list-header">
-          <input type="search" id="search-input" class="search-input" placeholder="Search subject, from, to…" autocomplete="off" />
-          <span class="count" id="message-count">0 messages</span>
+          <input type="search" id="search-input" class="search-input" placeholder="Search inbox (subject, to)…" autocomplete="off" />
+          <span class="count" id="message-count"></span>
         </div>
         <ul id="message-list" class="message-list" role="list"></ul>
+        <div id="pagination" class="pagination hidden">
+          <button type="button" id="page-first" class="btn btn-secondary btn-page" title="First page">&lt;&lt;</button>
+          <button type="button" id="page-prev" class="btn btn-secondary btn-page">Previous</button>
+          <span id="page-info" class="page-info">Page 1</span>
+          <button type="button" id="page-next" class="btn btn-secondary btn-page">Next</button>
+        </div>
         <div id="list-loading" class="loading hidden">Loading…</div>
         <div id="list-error" class="error hidden"></div>
       </aside>

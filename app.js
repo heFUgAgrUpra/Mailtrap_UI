@@ -4,10 +4,18 @@ function getCurrentInboxId() {
   return (elements.inboxSelect && elements.inboxSelect.value) || CONFIG.getInboxId();
 }
 
-function getApiUrl() {
+const MESSAGES_PER_PAGE = 30;
+
+function getApiUrl(opts) {
   const accountId = CONFIG.getAccountId();
   const inboxId = getCurrentInboxId();
-  return `${CONFIG.baseUrl}/accounts/${accountId}/inboxes/${inboxId}/messages`;
+  let url = `${CONFIG.baseUrl}/accounts/${accountId}/inboxes/${inboxId}/messages`;
+  const params = new URLSearchParams();
+  if (opts && opts.page) params.set('page', String(opts.page));
+  if (opts && opts.search && opts.search.trim()) params.set('search', opts.search.trim());
+  const qs = params.toString();
+  if (qs) url += '?' + qs;
+  return url;
 }
 
 function getInboxesUrl() {
@@ -20,6 +28,11 @@ const elements = {
   messageCount: document.getElementById('message-count'),
   listLoading: document.getElementById('list-loading'),
   listError: document.getElementById('list-error'),
+  pagination: document.getElementById('pagination'),
+  pageFirst: document.getElementById('page-first'),
+  pagePrev: document.getElementById('page-prev'),
+  pageNext: document.getElementById('page-next'),
+  pageInfo: document.getElementById('page-info'),
   tokenPrompt: document.getElementById('token-prompt'),
   openSettingsFromPrompt: document.getElementById('open-settings-from-prompt'),
   settingsModal: document.getElementById('settings-modal'),
@@ -50,6 +63,8 @@ const elements = {
 let messages = [];
 let selectedId = null;
 let searchQuery = '';
+let currentPage = 1;
+let hasMorePages = false;
 
 function showTokenPrompt() {
   const token = CONFIG.getToken();
@@ -114,11 +129,7 @@ function renderMessageList() {
   elements.messageList.innerHTML = '';
   const filtered = messages.filter(matchSearch);
   const total = messages.length;
-  if (searchQuery.trim()) {
-    elements.messageCount.textContent = `${filtered.length} of ${total} message${total !== 1 ? 's' : ''}`;
-  } else {
-    elements.messageCount.textContent = `${total} message${total !== 1 ? 's' : ''}`;
-  }
+  elements.messageCount.textContent = '';
 
   filtered.forEach((msg) => {
     const li = document.createElement('li');
@@ -416,7 +427,10 @@ async function loadInboxes() {
     elements.inboxSelect.disabled = false;
     syncDefaultInboxCheckbox();
 
-    if (selectedInbox) loadMessages();
+    if (selectedInbox) {
+      currentPage = 1;
+      loadMessages();
+    }
   } catch (e) {
     elements.inboxSelect.innerHTML = '<option value="">Failed to load</option>';
     elements.inboxSelect.disabled = false;
@@ -439,7 +453,9 @@ async function loadMessages() {
   elements.messageList.innerHTML = '';
 
   try {
-    const res = await fetch(getApiUrl(), {
+    const searchParam = elements.searchInput ? elements.searchInput.value.trim() : '';
+    const url = getApiUrl({ page: currentPage, search: searchParam || undefined });
+    const res = await fetch(url, {
       headers: { 'Api-Token': token }
     });
     if (!res.ok) {
@@ -448,7 +464,9 @@ async function loadMessages() {
     }
     messages = await res.json();
     if (!Array.isArray(messages)) messages = [];
+    hasMorePages = messages.length >= MESSAGES_PER_PAGE;
     renderMessageList();
+    updatePaginationUI();
     if (selectedId && !messages.some((m) => m.id === selectedId)) {
       selectedId = null;
     }
@@ -468,6 +486,23 @@ async function loadMessages() {
   }
 }
 
+function updatePaginationUI() {
+  if (!elements.pagination) return;
+  elements.pagination.classList.toggle('hidden', messages.length === 0);
+  if (elements.pageFirst) {
+    elements.pageFirst.disabled = currentPage <= 1;
+  }
+  if (elements.pagePrev) {
+    elements.pagePrev.disabled = currentPage <= 1;
+  }
+  if (elements.pageNext) {
+    elements.pageNext.disabled = !hasMorePages;
+  }
+  if (elements.pageInfo) {
+    elements.pageInfo.textContent = `Page ${currentPage}`;
+  }
+}
+
 function init() {
   elements.openSettingsFromPrompt.addEventListener('click', openSettings);
   elements.settingsBtn.addEventListener('click', openSettings);
@@ -476,13 +511,44 @@ function init() {
   elements.settingsModal.addEventListener('click', (e) => {
     if (e.target === elements.settingsModal) closeSettings();
   });
-  elements.refresh.addEventListener('click', loadInboxes);
+  elements.refresh.addEventListener('click', () => {
+    currentPage = 1;
+    loadInboxes();
+  });
 
   elements.inboxSelect.addEventListener('change', () => {
     const id = elements.inboxSelect.value;
-    if (id) loadMessages();
+    if (id) {
+      currentPage = 1;
+      loadMessages();
+    }
     syncDefaultInboxCheckbox();
   });
+
+  if (elements.pageFirst) {
+    elements.pageFirst.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage = 1;
+        loadMessages();
+      }
+    });
+  }
+  if (elements.pagePrev) {
+    elements.pagePrev.addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        loadMessages();
+      }
+    });
+  }
+  if (elements.pageNext) {
+    elements.pageNext.addEventListener('click', () => {
+      if (hasMorePages) {
+        currentPage++;
+        loadMessages();
+      }
+    });
+  }
 
   elements.defaultInboxCheckbox.addEventListener('change', () => {
     if (elements.defaultInboxCheckbox.checked) {
@@ -493,9 +559,22 @@ function init() {
     }
   });
 
+  let searchDebounceTimer = null;
   elements.searchInput.addEventListener('input', () => {
     searchQuery = elements.searchInput.value;
     renderMessageList();
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      currentPage = 1;
+      loadMessages();
+    }, 400);
+  });
+  elements.searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      clearTimeout(searchDebounceTimer);
+      currentPage = 1;
+      loadMessages();
+    }
   });
 
   elements.bodyText.addEventListener('click', (e) => {

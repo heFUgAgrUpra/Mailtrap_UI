@@ -529,6 +529,17 @@ body {
   overflow: auto;
 }
 
+.body-text a.body-link {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.body-text a.body-link:hover {
+  text-decoration: underline;
+  filter: brightness(1.15);
+}
+
 /* Responsive: narrow screens */
 @media (max-width: 768px) {
   .header {

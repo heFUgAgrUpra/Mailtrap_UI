@@ -138,6 +138,35 @@ function escapeHtml(s) {
   return div.innerHTML;
 }
 
+function openUrlInBrowser(url) {
+  if (typeof window.electronOpenExternal === 'function') {
+    window.electronOpenExternal(url);
+  } else {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+function makeLinksOpenInBrowser(iframe) {
+  if (!iframe || !iframe.contentDocument) return;
+  const doc = iframe.contentDocument;
+  doc.querySelectorAll('a[href^="http"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = a.getAttribute('href');
+      if (href) openUrlInBrowser(href);
+    });
+  });
+}
+
+// Match URLs for linkifying plain text (http/https)
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
+
+function linkifyText(text) {
+  return escapeHtml(text).replace(URL_REGEX, (match) => {
+    return '<a href="' + escapeHtml(match) + '" class="body-link" target="_blank" rel="noopener noreferrer">' + escapeHtml(match) + '</a>';
+  });
+}
+
 function selectMessage(id) {
   selectedId = id;
   renderMessageList();
@@ -174,6 +203,7 @@ function switchBodyTab(tab, msg) {
         doc.open();
         doc.write(html);
         doc.close();
+        makeLinksOpenInBrowser(elements.bodyIframe);
       })
       .catch(() => {
         elements.bodyIframe.srcdoc = '<p style="padding:1rem;color:#888">Could not load HTML body.</p>';
@@ -185,7 +215,7 @@ function switchBodyTab(tab, msg) {
     fetch(url, { headers: { 'Api-Token': CONFIG.getToken() } })
       .then((r) => r.text())
       .then((text) => {
-        elements.bodyText.textContent = text;
+        elements.bodyText.innerHTML = linkifyText(text);
       })
       .catch(() => {
         elements.bodyText.textContent = 'Could not load text body.';
@@ -197,7 +227,7 @@ function switchBodyTab(tab, msg) {
     fetch(url, { headers: { 'Api-Token': CONFIG.getToken() } })
       .then((r) => r.text())
       .then((text) => {
-        elements.bodyText.textContent = text;
+        elements.bodyText.innerHTML = linkifyText(text);
       })
       .catch(() => {
         elements.bodyText.textContent = 'Could not load raw body.';
@@ -338,6 +368,14 @@ function init() {
   elements.searchInput.addEventListener('input', () => {
     searchQuery = elements.searchInput.value;
     renderMessageList();
+  });
+
+  elements.bodyText.addEventListener('click', (e) => {
+    const link = e.target.closest('a.body-link');
+    if (link && link.href) {
+      e.preventDefault();
+      openUrlInBrowser(link.getAttribute('href'));
+    }
   });
 
   elements.tabs.forEach((tab) => {

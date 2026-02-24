@@ -1,7 +1,11 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 
 const iconPath = path.join(__dirname, 'assets', 'mailtrap-icon.png');
+
+ipcMain.handle('open-external', (_, url) => {
+  if (url && typeof url === 'string') shell.openExternal(url);
+});
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -12,7 +16,8 @@ function createWindow() {
     icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mailtrap Inbox</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1 class="logo">Mailtrap Inbox</h1>
+      <div class="header-actions">
+        <div class="token-field">
+          <label for="api-token">API Token</label>
+          <input type="password" id="api-token" placeholder="Paste your Api-Token" autocomplete="off" />
+          <button type="button" id="save-token" class="btn btn-secondary">Save</button>
+        </div>
+        <div class="token-field">
+          <label for="inbox-id">Inbox ID</label>
+          <input type="text" id="inbox-id" placeholder="e.g. 1184908" autocomplete="off" inputmode="numeric" />
+        </div>
+        <button type="button" id="refresh" class="btn btn-primary">Refresh</button>
+      </div>
+    </header>
+
+    <div id="token-prompt" class="token-prompt hidden">
+      <div class="token-prompt-box">
+        <p>Enter your Mailtrap API token to load messages.</p>
+        <input type="password" id="api-token-modal" placeholder="Api-Token" autocomplete="off" />
+        <button type="button" id="save-token-modal" class="btn btn-primary">Continue</button>
+      </div>
+    </div>
+
+    <main class="main">
+      <aside class="message-list-panel">
+        <div class="list-header">
+          <span class="count" id="message-count">0 messages</span>
+        </div>
+        <ul id="message-list" class="message-list" role="list"></ul>
+        <div id="list-loading" class="loading hidden">Loading…</div>
+        <div id="list-error" class="error hidden"></div>
+      </aside>
+      <section class="detail-panel">
+        <div id="detail-empty" class="detail-empty">
+          <p>Select a message</p>
+        </div>
+        <div id="detail-content" class="detail-content hidden">
+          <header class="detail-header">
+            <h2 id="detail-subject" class="detail-subject"></h2>
+            <div class="detail-meta">
+              <div class="meta-row">
+                <span class="meta-label">From</span>
+                <span id="detail-from" class="meta-value"></span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">To</span>
+                <span id="detail-to" class="meta-value"></span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Sent</span>
+                <span id="detail-sent" class="meta-value"></span>
+              </div>
+              <div class="meta-row">
+                <span class="meta-label">Size</span>
+                <span id="detail-size" class="meta-value"></span>
+              </div>
+            </div>
+          </header>
+          <div class="detail-tabs">
+            <button type="button" class="tab active" data-tab="html">HTML</button>
+            <button type="button" class="tab" data-tab="text">Text</button>
+            <button type="button" class="tab" data-tab="raw">Raw</button>
+          </div>
+          <div id="detail-body" class="detail-body">
+            <iframe id="body-iframe" title="Message body" sandbox="allow-same-origin"></iframe>
+            <pre id="body-text" class="body-text hidden"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

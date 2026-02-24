@@ -4,21 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mailtrap Inbox</title>
+  <link rel="icon" type="image/png" href="assets/mailtrap-icon.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header class="header">
-      <h1 class="logo">Mailtrap Inbox</h1>
+      <div class="header-left">
+        <h1 class="logo">Mailtrap Inbox</h1>
+        <button type="button" id="settings-btn" class="btn btn-secondary btn-icon" title="Settings">⚙ Settings</button>
+      </div>
       <div class="header-actions">
-        <div class="token-field">
-          <label for="api-token">API Token</label>
-          <input type="password" id="api-token" placeholder="Paste your Api-Token" autocomplete="off" />
-          <button type="button" id="save-token" class="btn btn-secondary">Save</button>
-        </div>
-        <div class="token-field">
-          <label for="inbox-id">Inbox ID</label>
-          <input type="text" id="inbox-id" placeholder="e.g. 1184908" autocomplete="off" inputmode="numeric" />
+        <div class="token-field inbox-field">
+          <label for="inbox-select">Inbox</label>
+          <span class="inbox-dropdown-group">
+            <select id="inbox-select" class="inbox-select">
+              <option value="">Load inboxes…</option>
+            </select>
+            <span class="default-inbox-wrap">
+              <input type="checkbox" id="default-inbox" class="default-inbox-cb" />
+              <label for="default-inbox" class="default-inbox-label">Default Inbox</label>
+            </span>
+          </span>
         </div>
         <button type="button" id="refresh" class="btn btn-primary">Refresh</button>
       </div>
@@ -26,15 +33,36 @@
 
     <div id="token-prompt" class="token-prompt hidden">
       <div class="token-prompt-box">
-        <p>Enter your Mailtrap API token to load messages.</p>
-        <input type="password" id="api-token-modal" placeholder="Api-Token" autocomplete="off" />
-        <button type="button" id="save-token-modal" class="btn btn-primary">Continue</button>
+        <p>To load messages, configure your API token and Account ID in Settings.</p>
+        <button type="button" id="open-settings-from-prompt" class="btn btn-primary">Open Settings</button>
+      </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-box settings-box">
+        <h2 class="modal-title">Settings</h2>
+        <p class="modal-desc">Your API token and Account ID are stored locally and never sent to any server except Mailtrap.</p>
+        <div class="settings-form">
+          <div class="settings-field">
+            <label for="settings-api-token">API Token</label>
+            <input type="password" id="settings-api-token" placeholder="Paste your Mailtrap Api-Token" autocomplete="off" />
+          </div>
+          <div class="settings-field">
+            <label for="settings-account-id">Account ID</label>
+            <input type="text" id="settings-account-id" placeholder="e.g. 123456" autocomplete="off" />
+          </div>
+          <div class="modal-actions">
+            <button type="button" id="settings-cancel" class="btn btn-secondary">Cancel</button>
+            <button type="button" id="settings-save" class="btn btn-primary">Save</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <main class="main">
       <aside class="message-list-panel">
         <div class="list-header">
+          <input type="search" id="search-input" class="search-input" placeholder="Search subject, from, to…" autocomplete="off" />
           <span class="count" id="message-count">0 messages</span>
         </div>
         <ul id="message-list" class="message-list" role="list"></ul>

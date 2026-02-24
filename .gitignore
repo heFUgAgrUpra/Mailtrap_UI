@@ -1,4 +1,8 @@
 node_modules/
 dist/
+.electron-build-tmp/
 .DS_Store
 config.js
+.env
+.env.local
+.env.*.local

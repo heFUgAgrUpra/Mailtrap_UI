@@ -11,7 +11,7 @@ npm install
 npm start
 ```
 
-This opens a window with the inbox. A default API token is set so it works immediately; you can change it in the header.
+This opens a window. Enter your API token and Account ID in the header (or copy `config.example.js` to `config.js` and add them there).
 
 ### Option 2: Run in the browser
 
@@ -27,7 +27,7 @@ Then open the URL shown (e.g. http://localhost:3000).
 
 - **Message list** – Subject, sender, and date for each message; unread messages are bold.
 - **Message detail** – From, to, sent time, size, and body viewer with HTML / Text / Raw tabs.
-- **API token** – Enter and save your Mailtrap API token in the UI (stored in `localStorage`). A default token is set for development.
+- **API token** – Enter and save your Mailtrap API token in the UI (stored in `localStorage`), or set it in `config.js` (local only, not committed).
 
 ## API
 
@@ -38,32 +38,27 @@ The app uses:
 
 Account and inbox IDs are in `config.js`. To use another inbox, change `accountId` and `inboxId` there.
 
-## Security
+## Security – what is never sent to GitHub
 
-- Do not commit real API tokens. For production, use environment variables or a `.env` file and load the token in `config.js` instead of `defaultToken`.
+These are **not** committed (see `.gitignore`):
+
+- **config.js** – Your API token, account ID, inbox ID, and any mailbox names you set. Copy from `config.example.js` and add your own values locally.
+- **.env** and **.env.local** – Use these for tokens/IDs if you prefer; they are ignored by git.
+
+The only config in the repo is **config.example.js**, which uses **placeholder values** (`123456`, `1234567`, empty token). No real account IDs, inbox IDs, or mailbox names are in the codebase.
+
+- Do not commit `config.js` or any file containing real tokens or IDs.
 - The token is sent only to Mailtrap’s API from your machine.
 
 ## Packaging as a standalone app
 
-To build distributable executables (e.g. for macOS/Windows):
+1. Install and build:
 
-```bash
-npm install --save-dev electron-builder
-```
+   ```bash
+   npm install
+   npm run dist:mac
+   ```
 
-Add to `package.json`:
+   Output: **dist/Mailtrap Inbox.app** and **dist/Mailtrap Inbox-x.x.x.dmg**.
 
-```json
-"build": {
-  "appId": "com.mailtrap.inbox",
-  "productName": "Mailtrap Inbox",
-  "directories": { "output": "dist" }
-},
-"scripts": {
-  "pack": "electron-builder --dir",
-  "dist": "electron-builder"
-}
-```
-
-Then run `npm run dist` to create installers in the `dist` folder.
-# Mailtrap_UI
+2. For detailed steps (macOS app, icon sizes, creating .icns), see **[docs/MACOS-APP-AND-ICONS.md](docs/MACOS-APP-AND-ICONS.md)**.

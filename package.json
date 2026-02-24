@@ -5,12 +5,49 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "app": "electron ."
+    "app": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:mac": "mkdir -p .electron-build-tmp && TMPDIR=$PWD/.electron-build-tmp electron-builder --mac"
   },
-  "keywords": ["mailtrap", "inbox", "email"],
+  "keywords": [
+    "mailtrap",
+    "inbox",
+    "email"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^28.0.0"
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.mailtrap.inbox",
+    "productName": "Mailtrap Inbox",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/mailtrap-icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

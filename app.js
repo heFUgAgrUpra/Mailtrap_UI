@@ -1,8 +1,18 @@
 const CONFIG = window.MAILTRAP_CONFIG;
 
+function getCurrentInboxId() {
+  return (elements.inboxSelect && elements.inboxSelect.value) || CONFIG.getInboxId();
+}
+
 function getApiUrl() {
-  const inboxId = CONFIG.getInboxId();
-  return `${CONFIG.baseUrl}/accounts/${CONFIG.accountId}/inboxes/${inboxId}/messages`;
+  const accountId = CONFIG.getAccountId();
+  const inboxId = getCurrentInboxId();
+  return `${CONFIG.baseUrl}/accounts/${accountId}/inboxes/${inboxId}/messages`;
+}
+
+function getInboxesUrl() {
+  const accountId = CONFIG.getAccountId();
+  return `${CONFIG.baseUrl}/accounts/${accountId}/inboxes`;
 }
 
 const elements = {
@@ -11,11 +21,16 @@ const elements = {
   listLoading: document.getElementById('list-loading'),
   listError: document.getElementById('list-error'),
   tokenPrompt: document.getElementById('token-prompt'),
-  apiToken: document.getElementById('api-token'),
-  apiTokenModal: document.getElementById('api-token-modal'),
-  saveToken: document.getElementById('save-token'),
-  saveTokenModal: document.getElementById('save-token-modal'),
-  inboxId: document.getElementById('inbox-id'),
+  openSettingsFromPrompt: document.getElementById('open-settings-from-prompt'),
+  settingsModal: document.getElementById('settings-modal'),
+  settingsApiToken: document.getElementById('settings-api-token'),
+  settingsAccountId: document.getElementById('settings-account-id'),
+  settingsSave: document.getElementById('settings-save'),
+  settingsCancel: document.getElementById('settings-cancel'),
+  settingsBtn: document.getElementById('settings-btn'),
+  inboxSelect: document.getElementById('inbox-select'),
+  defaultInboxCheckbox: document.getElementById('default-inbox'),
+  searchInput: document.getElementById('search-input'),
   refresh: document.getElementById('refresh'),
   detailEmpty: document.getElementById('detail-empty'),
   detailContent: document.getElementById('detail-content'),
@@ -32,15 +47,14 @@ const elements = {
 
 let messages = [];
 let selectedId = null;
+let searchQuery = '';
 
 function showTokenPrompt() {
   const token = CONFIG.getToken();
   if (!token) {
     elements.tokenPrompt.classList.remove('hidden');
   } else {
-    elements.apiToken.value = token;
-    elements.inboxId.value = CONFIG.getInboxId();
-    loadMessages();
+    loadInboxes();
   }
 }
 
@@ -48,23 +62,31 @@ function hideTokenPrompt() {
   elements.tokenPrompt.classList.add('hidden');
 }
 
-function saveTokenFromModal() {
-  const token = elements.apiTokenModal.value.trim();
-  if (token) {
-    CONFIG.setToken(token);
-    elements.apiToken.value = token;
-    elements.apiTokenModal.value = '';
-    hideTokenPrompt();
-    loadMessages();
-  }
+function syncDefaultInboxCheckbox() {
+  if (!elements.defaultInboxCheckbox) return;
+  const saved = CONFIG.getInboxId();
+  const current = elements.inboxSelect && elements.inboxSelect.value;
+  elements.defaultInboxCheckbox.checked = !!(current && saved && current === saved);
 }
 
-function saveTokenFromHeader() {
-  const token = elements.apiToken.value.trim();
-  const inboxId = elements.inboxId.value.trim();
+function openSettings() {
+  if (elements.settingsApiToken) elements.settingsApiToken.value = CONFIG.getToken();
+  if (elements.settingsAccountId) elements.settingsAccountId.value = CONFIG.getAccountId();
+  elements.settingsModal.classList.remove('hidden');
+  elements.tokenPrompt.classList.add('hidden');
+}
+
+function closeSettings() {
+  elements.settingsModal.classList.add('hidden');
+}
+
+function saveSettings() {
+  const token = elements.settingsApiToken.value.trim();
+  const accountId = elements.settingsAccountId.value.trim();
   if (token) CONFIG.setToken(token);
-  if (inboxId) CONFIG.setInboxId(inboxId);
-  if (token || inboxId) loadMessages();
+  if (accountId) CONFIG.setAccountId(accountId);
+  closeSettings();
+  loadInboxes();
 }
 
 function formatDate(iso) {
@@ -77,11 +99,26 @@ function formatDate(iso) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+function matchSearch(msg) {
+  if (!searchQuery.trim()) return true;
+  const q = searchQuery.trim().toLowerCase();
+  const subject = (msg.subject || '').toLowerCase();
+  const from = [msg.from_email, msg.from_name].filter(Boolean).join(' ').toLowerCase();
+  const to = (msg.to_email || '').toLowerCase();
+  return subject.includes(q) || from.includes(q) || to.includes(q);
+}
+
 function renderMessageList() {
   elements.messageList.innerHTML = '';
-  elements.messageCount.textContent = `${messages.length} message${messages.length !== 1 ? 's' : ''}`;
+  const filtered = messages.filter(matchSearch);
+  const total = messages.length;
+  if (searchQuery.trim()) {
+    elements.messageCount.textContent = `${filtered.length} of ${total} message${total !== 1 ? 's' : ''}`;
+  } else {
+    elements.messageCount.textContent = `${total} message${total !== 1 ? 's' : ''}`;
+  }
 
-  messages.forEach((msg) => {
+  filtered.forEach((msg) => {
     const li = document.createElement('li');
     li.className = 'message-item' + (msg.is_read ? '' : ' unread');
     if (selectedId === msg.id) li.classList.add('active');
@@ -172,6 +209,70 @@ function switchBodyTab(tab, msg) {
   }
 }
 
+async function loadInboxes() {
+  const token = CONFIG.getToken();
+  const accountId = CONFIG.getAccountId();
+  if (!token) {
+    showTokenPrompt();
+    return;
+  }
+  if (!accountId) {
+    if (elements.inboxSelect) {
+      elements.inboxSelect.innerHTML = '<option value="">Enter Account ID → Refresh</option>';
+      elements.inboxSelect.disabled = false;
+    }
+    if (elements.listError) {
+      elements.listError.textContent = 'Enter your Account ID in the header and click Refresh to load inboxes.';
+      elements.listError.classList.remove('hidden');
+    }
+    return;
+  }
+  CONFIG.setAccountId(accountId);
+  if (elements.listError) elements.listError.classList.add('hidden');
+
+  elements.inboxSelect.innerHTML = '<option value="">Loading…</option>';
+  elements.inboxSelect.disabled = true;
+
+  try {
+    const url = `${CONFIG.baseUrl}/accounts/${accountId}/inboxes`;
+    const res = await fetch(url, { headers: { 'Api-Token': token } });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || `HTTP ${res.status}`);
+    }
+    const inboxes = await res.json();
+    if (!Array.isArray(inboxes)) throw new Error('Invalid inboxes response');
+
+    elements.inboxSelect.innerHTML = '';
+    const currentInboxId = CONFIG.getInboxId();
+    let selectedInbox = currentInboxId;
+
+    inboxes.forEach((inbox) => {
+      const opt = document.createElement('option');
+      opt.value = String(inbox.id);
+      opt.textContent = inbox.name ? `${inbox.name} (${inbox.id})` : String(inbox.id);
+      if (String(inbox.id) === currentInboxId) selectedInbox = String(inbox.id);
+      elements.inboxSelect.appendChild(opt);
+    });
+
+    if (inboxes.length && !selectedInbox) {
+      selectedInbox = String(inboxes[0].id);
+    }
+    elements.inboxSelect.value = selectedInbox || '';
+    elements.inboxSelect.disabled = false;
+    syncDefaultInboxCheckbox();
+
+    if (selectedInbox) loadMessages();
+  } catch (e) {
+    elements.inboxSelect.innerHTML = '<option value="">Failed to load</option>';
+    elements.inboxSelect.disabled = false;
+    if (elements.listError) {
+      elements.listError.textContent = 'Inboxes: ' + (e.message || 'Request failed. Check Account ID and token.');
+      elements.listError.classList.remove('hidden');
+    }
+  }
+}
+
 async function loadMessages() {
   const token = CONFIG.getToken();
   if (!token) {
@@ -210,14 +311,33 @@ async function loadMessages() {
 }
 
 function init() {
-  elements.saveTokenModal.addEventListener('click', saveTokenFromModal);
-  elements.saveToken.addEventListener('click', saveTokenFromHeader);
-  elements.refresh.addEventListener('click', () => {
-    const token = elements.apiToken.value.trim();
-    const inboxId = elements.inboxId.value.trim();
-    if (token) CONFIG.setToken(token);
-    if (inboxId) CONFIG.setInboxId(inboxId);
-    loadMessages();
+  elements.openSettingsFromPrompt.addEventListener('click', openSettings);
+  elements.settingsBtn.addEventListener('click', openSettings);
+  elements.settingsCancel.addEventListener('click', closeSettings);
+  elements.settingsSave.addEventListener('click', saveSettings);
+  elements.settingsModal.addEventListener('click', (e) => {
+    if (e.target === elements.settingsModal) closeSettings();
+  });
+  elements.refresh.addEventListener('click', loadInboxes);
+
+  elements.inboxSelect.addEventListener('change', () => {
+    const id = elements.inboxSelect.value;
+    if (id) loadMessages();
+    syncDefaultInboxCheckbox();
+  });
+
+  elements.defaultInboxCheckbox.addEventListener('change', () => {
+    if (elements.defaultInboxCheckbox.checked) {
+      const id = elements.inboxSelect.value;
+      if (id) CONFIG.setInboxId(id);
+    } else {
+      CONFIG.setInboxId('');
+    }
+  });
+
+  elements.searchInput.addEventListener('input', () => {
+    searchQuery = elements.searchInput.value;
+    renderMessageList();
   });
 
   elements.tabs.forEach((tab) => {

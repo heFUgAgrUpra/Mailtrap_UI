@@ -614,10 +614,21 @@ function init() {
   showTokenPrompt();
 
   if (CONFIG.customButtonScripts && Array.isArray(CONFIG.customButtonScripts)) {
+    var APP = window.MAILTRAP_APP;
     CONFIG.customButtonScripts.forEach(function (name) {
       if (!name || typeof name !== 'string') return;
+      var baseName = name.replace(/\.js$/i, '');
+      if (baseName === 'get-code' && typeof CONFIG.getCodeButtonScript === 'function') {
+        if (typeof CONFIG.getCodeButtonStyles === 'string' && CONFIG.getCodeButtonStyles) {
+          var style = document.createElement('style');
+          style.textContent = CONFIG.getCodeButtonStyles;
+          document.head.appendChild(style);
+        }
+        CONFIG.getCodeButtonScript(APP, CONFIG);
+        return;
+      }
       var script = document.createElement('script');
-      script.src = name.replace(/\.js$/i, '') + '.js';
+      script.src = baseName + '.js';
       script.async = true;
       document.body.appendChild(script);
     });

@@ -22,8 +22,8 @@ window.MAILTRAP_CONFIG = {
   setInboxId(id) {
     localStorage.setItem('mailtrap_inbox_id', String(id).trim());
   },
-  // Custom header buttons: list of script names (without .js) to load from the app directory.
-  customButtonScripts: ['do-something'],
-  // When using 'do-something', set the button label (e.g. doSomethingButtonLabel: 'Do Something').
-  doSomethingButtonLabel: 'Do Something'
+  // Custom header buttons: script names to load (e.g. ['do-something']) or inline when doSomethingButtonScript is set.
+  customButtonScripts: [],
+  // For 'do-something': button label. Optional: doSomethingButtonStyles (CSS string) and doSomethingButtonScript (function(APP, CONFIG))
+  doSomethingButtonLabel: 'Do something'
 };

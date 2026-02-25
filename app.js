@@ -612,6 +612,23 @@ function init() {
   });
 
   showTokenPrompt();
+
+  if (CONFIG.customButtonScripts && Array.isArray(CONFIG.customButtonScripts)) {
+    CONFIG.customButtonScripts.forEach(function (name) {
+      if (!name || typeof name !== 'string') return;
+      var script = document.createElement('script');
+      script.src = name.replace(/\.js$/i, '') + '.js';
+      script.async = true;
+      document.body.appendChild(script);
+    });
+  }
 }
+
+window.MAILTRAP_APP = {
+  getApiUrl: getApiUrl,
+  escapeHtml: escapeHtml,
+  showTokenPrompt: showTokenPrompt,
+  fallbackCopy: fallbackCopy
+};
 
 init();

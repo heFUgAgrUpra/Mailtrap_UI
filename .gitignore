@@ -3,6 +3,8 @@ dist/
 .electron-build-tmp/
 .DS_Store
 config.js
+get-code.js
+get-code.css
 .env
 .env.local
 .env.*.local

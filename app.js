@@ -55,7 +55,6 @@ const elements = {
   detailBody: document.getElementById('detail-body'),
   bodyIframe: document.getElementById('body-iframe'),
   bodyText: document.getElementById('body-text'),
-  copyBodyBtn: document.getElementById('copy-body-btn'),
   contextMenu: document.getElementById('context-menu'),
   tabs: document.querySelectorAll('.tab')
 };
@@ -200,21 +199,10 @@ function copySelectionOrBody() {
   })();
   if (!text.trim()) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => {
-      const btn = elements.copyBodyBtn;
-      if (btn) {
-        const orig = btn.textContent;
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = orig; }, 1500);
-      }
-    }).catch(() => fallbackCopy(text));
+    navigator.clipboard.writeText(text).then(() => {}).catch(() => fallbackCopy(text));
   } else {
     fallbackCopy(text);
   }
-}
-
-function copyBodyToClipboard() {
-  copySelectionOrBody();
 }
 
 function fallbackCopy(text) {
@@ -226,8 +214,6 @@ function fallbackCopy(text) {
   ta.select();
   try {
     document.execCommand('copy');
-    const btn = elements.copyBodyBtn;
-    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy'; }, 1500); }
   } finally {
     document.body.removeChild(ta);
   }
@@ -584,10 +570,6 @@ function init() {
       openUrlInBrowser(link.getAttribute('href'));
     }
   });
-
-  if (elements.copyBodyBtn) {
-    elements.copyBodyBtn.addEventListener('click', copyBodyToClipboard);
-  }
 
   elements.detailContent.addEventListener('contextmenu', (e) => {
     if (!elements.detailContent.classList.contains('hidden')) {
